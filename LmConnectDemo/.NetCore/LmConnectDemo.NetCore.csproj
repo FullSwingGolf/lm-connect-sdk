@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Version>1.1.0</Version>
+    <AssemblyName>LmConnectDemo</AssemblyName>
+    <RootNamespace>LmConnectDemo</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Program.cs" Link="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FullSwingGolf.LaunchMonitor" Version="1.2.0-alpha3" />
+  </ItemGroup>
+
+</Project>
