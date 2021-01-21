@@ -79,56 +79,76 @@ namespace LmConnectDemo
                 // Step 1: Initialize the SDK with your account ID and account key
                 await Connect.Initialize(AccountId, AccountKey);
 
-                Console.WriteLine("Searching for Launch Monitors");
-
-                // Step 2: Find available Launch Monitors
-                IReadOnlyList<IDevice> devices = await Connect.FindDevicesAsync();
-
-                if (devices.Count > 0)
+                // Step 2: Initialize will throw an exception if not authorized, but
+                // for completeness, verify authorization and print claims
+                if (Connect.Authorization.IsAuthorized)
                 {
-                    // Print the devices found
-                    Console.WriteLine("Found Launch Monitors");
+                    Console.WriteLine("Authorization claims:");
 
-                    selection = DisplayMenu(devices);
-
-                    if (selection != -1)
+                    foreach (KeyValuePair<string, object> claim in Connect.Authorization.Claims)
                     {
-                        // Grab the first found device for demo code
-                        var device = devices[selection];
+                        Console.WriteLine("  Claim: {0}, Value: {1}", claim.Key, claim.Value);
+                    }
 
-                        // Register for device changed events - optional
-                        device.StateChangedEvent += Device_StateChangedEvent;
+                    Console.WriteLine("Searching for Launch Monitors");
 
-                        // Step 3: Register for shot events
-                        device.ShotEvent += Device_ShotEvent;
+                    // Step 3: Find available Launch Monitors
+                    IReadOnlyList<IDevice> devices = await Connect.FindDevicesAsync();
 
-                        // Step 4: Connect to one or more launch monitors
-                        try
+                    if (devices.Count > 0)
+                    {
+                        // Print the devices found
+                        Console.WriteLine("Found Launch Monitors");
+
+                        selection = DisplayMenu(devices);
+
+                        if (selection != -1)
                         {
-                            await device.Connect();
+                            // Grab the first found device for demo code
+                            var device = devices[selection];
 
-                            // Set the device to auto-arm as opposed to SDK arming it
-                            await device.SetConfiguration(ConfigurationId.AutoArm, true);
+                            // Step 4: Register for device changed events - optional
+                            device.StateChangedEvent += Device_StateChangedEvent;
 
-                            // If we connected to the device, wait for a few shots
-                            await _complete.WaitAsync();
+                            // Step 5: Register for shot events
+                            device.ShotEvent += Device_ShotEvent;
+                            
+                            try
+                            {
+                                // Step 6: Connect to one or more launch monitors
+                                await device.Connect();
 
-                            // Disconnect the device
-                            await device.Disconnect();
+                                // Step 7: Set configuration if desired - optional
+                                // Set the device to auto-arm as opposed to SDK arming it
+                                await device.SetConfiguration(ConfigurationId.AutoArm, true);
+
+                                // Set the club type to driver
+                                await device.SetConfiguration(ConfigurationId.Club, Club.ClubDriver);
+
+                                // If we connected to the device, wait for a few shots
+                                await _complete.WaitAsync();
+
+                                // Step 8: Disconnect the device
+                                await device.Disconnect();
+                            }
+                            catch (ConnectionException ex)
+                            {
+                                Console.WriteLine("Could not connect to Launch Monitor {0}, {1}", device.Id, ex.ToString());
+                            }
                         }
-                        catch (ConnectionException ex)
+                        else
                         {
-                            Console.WriteLine("Could not connect to Launch Monitor {0}, {1}", device.Id, ex.ToString());
+                            Console.WriteLine("Not connecting. Exiting");
                         }
                     }
                     else
                     {
-                        Console.WriteLine("Not connecting. Exiting");
+                        Console.WriteLine("Could not find any Launch Monitors. Verify they are powered on");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Could not find any Launch Monitors. Verify they are powered on");
+                    Console.WriteLine("Not authorized");
                 }
             }
             catch (NotAuthorizedException)
