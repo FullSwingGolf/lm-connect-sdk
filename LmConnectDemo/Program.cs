@@ -182,7 +182,7 @@ namespace LmConnectDemo
 
         private static void Device_VideoAvailableEvent(object sender, VideoAvailableEventArgs e)
         {
-            Console.WriteLine("Video available  {0}", e.Url);
+            Console.WriteLine("Video available  {0}", e.ShotId);
         }
 
         private static void Device_StateChangedEvent(object sender, StateChangedEventArgs e)
