@@ -22,3 +22,5 @@ The following data is provided per shot:
 * Apex - yards 
 
 NOTES: If a value is null it means it could not be calculated.
+
+[Full documentation](https://fsglm.z19.web.core.windows.net/sdk-api-documentation/)
