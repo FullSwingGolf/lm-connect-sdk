@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using FullSwingGolf.LaunchMonitor;
+#if NETCOREAPP
+using Microsoft.Extensions.Configuration;
+#endif
+using System.Reflection;
+using System.IO;
 
 namespace LmConnectDemo
 {
@@ -11,11 +16,21 @@ namespace LmConnectDemo
         static private int _shotsReceived = 0;
         static private int _totalShots = 100;
         static private SemaphoreSlim _complete = new SemaphoreSlim(0);
-        static private readonly string AccountId = "[Enter Account ID provided by FSG]";
-        static private readonly string AccountKey = "[Enter Account Key provided by FSG]";
+        // Add Account ID and Account Key provided by FSG in code or in .NET Core
+        // add them to your secrets.json file
+        static private string AccountId = "";
+        static private string AccountKey = "";
+#if NETCOREAPP
+        private static IConfigurationRoot Configuration { get; set; }
+#endif
 
         static void Main(string[] args)
         {
+#if NETCOREAPP
+            // Check whether or not to access secrets file for account information
+            if (string.IsNullOrEmpty(AccountId) && string.IsNullOrEmpty(AccountKey)) VerifyAccountInfo();
+#endif
+
             // Run demo code and wait for it it complete
             RunDemo().Wait();
 
@@ -23,6 +38,19 @@ namespace LmConnectDemo
 
             Console.Read();
         }
+
+#if NETCOREAPP
+        static void VerifyAccountInfo()
+        {
+            var builder = new ConfigurationBuilder()
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), true);
+
+            Configuration = builder.Build();
+
+            AccountId = Configuration["AccountId"];
+            AccountKey = Configuration["AccountKey"];
+        }
+#endif
 
         static int DisplayMenu(IReadOnlyList<IDevice> devices)
         {
@@ -32,7 +60,8 @@ namespace LmConnectDemo
 
             while (display)
             {
-                Console.WriteLine("Which device would you like to connect to:");
+                Console.WriteLine("Select device number and press enter to connect to device:");
+                Console.WriteLine();
 
                 foreach (var deviceIter in devices)
                 {
@@ -43,8 +72,7 @@ namespace LmConnectDemo
                 Console.WriteLine("{0}. None", deviceNumber);
                 Console.Write("\nSelection: ");
 
-                ConsoleKeyInfo userinput = Console.ReadKey();
-                int selectionNum = userinput.KeyChar - '0';
+                int selectionNum = Convert.ToInt32(Console.ReadLine());
                 Console.WriteLine();
 
                 if (selectionNum == deviceNumber)
@@ -118,7 +146,9 @@ namespace LmConnectDemo
 
                             // Step 7: Register for shot video events - optional
                             device.VideoAvailableEvent += Device_VideoAvailableEvent;
-                            
+
+                            device.PointCloudAvailableEvent += Device_PointCloudAvailableEvent;
+
                             try
                             {
                                 // Step 8: Connect to one or more launch monitors
@@ -142,6 +172,11 @@ namespace LmConnectDemo
                                 await device.SetConfiguration(ConfigurationId.Location, Location.Screen);
                                 await device.SetConfiguration(ConfigurationId.Altitude, 1100);
                                 await device.SetConfiguration(ConfigurationId.Temperature, 70.0);
+                                List<DataPoint> screenLayout = new List<DataPoint>() { DataPoint.CarryDistance, DataPoint.TotalDistance, DataPoint.LaunchAngle,
+                                    DataPoint.SpinRate, DataPoint.SpinAxis,DataPoint.BallSpeed, DataPoint.ClubSpeed, DataPoint.SmashFactor, DataPoint.ClubPath,
+                                    DataPoint.FaceAngle, DataPoint.FaceToPath, DataPoint.AttackAngle, DataPoint.Apex, DataPoint.HorizontalLaunchAngle,
+                                    DataPoint.SideCarry, DataPoint.SideTotal };
+                                await device.SetConfiguration(ConfigurationId.ScreenLayout, screenLayout);
 
                                 // If we connected to the device, wait for a few shots
                                 await _complete.WaitAsync();
@@ -175,14 +210,50 @@ namespace LmConnectDemo
             }
         }
 
+        private static async void Device_PointCloudAvailableEvent(object sender, PointCloudAvailableEventArgs e)
+        {
+            IDevice device = (IDevice)sender;
+
+            Console.WriteLine("Point cloud available for shot: {0}", e.ShotId);
+
+            // Request point cloud
+            PointCloud pointCloud = await device.GetPointCloud(e.ShotId);
+
+            Console.Write("Point Cloud Points: ");
+            for (int i = 0; i < 4; i++)
+            {
+                PointCloudPoint point = pointCloud.Points[i];
+                Console.Write("[offset: {0}, x: {1}, y: {2}, z: {3}] ", point.Offset, point.X, point.Y, point.Z);
+            }
+            Console.Write("\n");
+        }
+
         private static void Device_ConfigurationChangedEvent(object sender, ConfigurationChangedEventArgs e)
         {
             Console.WriteLine("Configuration changes, ID: {0}, Value: {1}", e.Id, e.Value);
         }
 
-        private static void Device_VideoAvailableEvent(object sender, VideoAvailableEventArgs e)
+        private static async void Device_VideoAvailableEvent(object sender, VideoAvailableEventArgs e)
         {
-            Console.WriteLine("Video available  {0}", e.ShotId);
+            IDevice device = (IDevice)sender;
+
+            Console.WriteLine("Video available for shot: {0}", e.ShotId);
+
+            //Default location for shot video
+            string videoDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).ToString(), @"Full Swing Golf\Launch Monitor Connect SDK\Shot Videos");
+            if (!Directory.Exists(videoDirectory)) Directory.CreateDirectory(videoDirectory);
+
+            string shotName = e.ShotId + ".mp4";
+            string path = Path.Combine(videoDirectory, shotName);
+
+            //Request shot video
+            using (Stream shotVideoStream = await device.GetShotVideo(e.ShotId))
+            {
+                using (Stream fileStream = File.Open(path, FileMode.Create))
+                {
+                    await shotVideoStream.CopyToAsync(fileStream);
+                }
+            }
         }
 
         private static void Device_StateChangedEvent(object sender, StateChangedEventArgs e)
@@ -196,25 +267,84 @@ namespace LmConnectDemo
             Console.WriteLine("  Shot Id: {0}", e.Shot.Id);
             Console.WriteLine("  Device Id: {0}", e.Shot.DeviceId);
             Console.WriteLine("  Timestamp: {0}", e.Shot.Timestamp.ToLocalTime());
-            if (e.Shot.AttackAngle.HasValue) Console.WriteLine("  Attack Angle: {0:0.00}", e.Shot.AttackAngle);
-            if (e.Shot.BallSpeed.HasValue) Console.WriteLine("  Ball Speed: {0:0.00}", e.Shot.BallSpeed);
-            if (e.Shot.ClubPath.HasValue) Console.WriteLine("  Club Path: {0:0.00}", e.Shot.ClubPath);
-            if (e.Shot.ClubSpeed.HasValue) Console.WriteLine("  Club Speed: {0:0.00}", e.Shot.ClubSpeed);
-            if (e.Shot.FaceAngle.HasValue) Console.WriteLine("  Face Angle: {0:0.00}", e.Shot.FaceAngle);
-            if (e.Shot.HorizontalLaunchAngle.HasValue) Console.WriteLine("  Horizontal Launch Angle: {0:0.00}", e.Shot.HorizontalLaunchAngle);
-            if (e.Shot.SmashFactor.HasValue) Console.WriteLine("  Smash Factor: {0:0.00}", e.Shot.SmashFactor);
-
-            if (e.Type == ShotType.Flight)
+            if (e.Shot.AttackAngle.HasValue)
             {
-                if (e.Shot.SpinAxis.HasValue) Console.WriteLine("  Spin Axis: {0:0.00}", e.Shot.SpinAxis);
-                if (e.Shot.SpinRate.HasValue) Console.WriteLine("  Spin rate: {0:0.00}", e.Shot.SpinRate);
-                if (e.Shot.VerticalLaunchAngle.HasValue) Console.WriteLine("  Vertical Launch Angle: {0:0.00}", e.Shot.VerticalLaunchAngle);
-                if (e.Shot.Apex.HasValue) Console.WriteLine("  Apex: {0:0.00}", e.Shot.Apex);
-                if (e.Shot.CarryDistance.HasValue) Console.WriteLine("  Carry Distance: {0:0.00}", e.Shot.CarryDistance);
-                if (e.Shot.Side.HasValue) Console.WriteLine("  Side: {0:0.00}", e.Shot.Side);
-                if (e.Shot.SideTotal.HasValue) Console.WriteLine("  Side Total: {0:0.00}", e.Shot.SideTotal);
-                if (e.Shot.TotalDistance.HasValue) Console.WriteLine("  Total Distance: {0:0.00}", e.Shot.TotalDistance);
+                if (e.Shot.AttackAngleCalculationType.HasValue) Console.WriteLine("  Attack Angle: {0:0.00}    Calculation Type: {1}", e.Shot.AttackAngle, e.Shot.AttackAngleCalculationType);
+                else Console.WriteLine("  Attack Angle: {0:0.00}", e.Shot.AttackAngle);
+            }
+            if (e.Shot.BallSpeed.HasValue)
+            {
+                if (e.Shot.BallSpeedCalculationType.HasValue) Console.WriteLine("  Ball Speed: {0:0.00}    Calculation Type: {1}", e.Shot.BallSpeed, e.Shot.BallSpeedCalculationType);
+                else Console.WriteLine("  Ball Speed: {0:0.00}", e.Shot.BallSpeed);
+            }
+            if (e.Shot.ClubPath.HasValue)
+            {
+                if (e.Shot.ClubPathCalculationType.HasValue) Console.WriteLine("  Club Path: {0:0.00}    Calculation Type: {1}", e.Shot.ClubPath, e.Shot.ClubPathCalculationType);
+                else Console.WriteLine("  Club Path: {0:0.00}", e.Shot.ClubPath);
+            }
+            if (e.Shot.ClubSpeed.HasValue)
+            {
+                if (e.Shot.ClubSpeedCalculationType.HasValue) Console.WriteLine("  Club Speed: {0:0.00}    Calculation Type: {1}", e.Shot.ClubSpeed, e.Shot.ClubSpeedCalculationType);
+                else Console.WriteLine("  Club Speed: {0:0.00}", e.Shot.ClubSpeed);
+            }
+            if (e.Shot.FaceAngle.HasValue)
+            {
+                if (e.Shot.FaceAngleCalculationType.HasValue) Console.WriteLine("  Face Angle: {0:0.00}    Calculation Type: {1}", e.Shot.FaceAngle, e.Shot.FaceAngleCalculationType);
+                else Console.WriteLine("  Face Angle: {0:0.00}", e.Shot.FaceAngle);
+            }
+            if (e.Shot.HorizontalLaunchAngle.HasValue)
+            {
+                if (e.Shot.HorizontalLaunchAngleCalculationType.HasValue) Console.WriteLine("  Horizontal Launch Angle: {0:0.00}    Calculation Type: {1}", e.Shot.HorizontalLaunchAngle, e.Shot.HorizontalLaunchAngleCalculationType);
+                else Console.WriteLine("  Horizontal Launch Angle: {0:0.00}", e.Shot.HorizontalLaunchAngle);
+            }
+            if (e.Shot.SmashFactor.HasValue)
+            {
+                if (e.Shot.SmashFactorCalculationType.HasValue) Console.WriteLine("  Smash Factor: {0:0.00}    Calculation Type: {1}", e.Shot.SmashFactor, e.Shot.SpinRateCalculationType);
+                else Console.WriteLine("  Smash Factor: {0:0.00}", e.Shot.SmashFactor);
+            }
+            if (e.Shot.SpinAxis.HasValue)
+            {
+                if (e.Shot.SpinAxisCalculationType.HasValue) Console.WriteLine("  Spin Axis: {0:0.00}    Calculation Type: {1}", e.Shot.SpinAxis, e.Shot.SpinRateCalculationType);
+                else Console.WriteLine("  Spin Axis: {0:0.00}", e.Shot.SpinAxis);
+            }
+            if (e.Shot.SpinRate.HasValue)
+            {
+                if (e.Shot.SpinRateCalculationType.HasValue) Console.WriteLine("  Spin rate: {0:0.00}     Calculation Type: {1}", e.Shot.SpinRate, e.Shot.SpinRateCalculationType);
+                else Console.WriteLine("  Spin rate: {0:0.00}", e.Shot.SpinRate);
+            }
+            if (e.Shot.VerticalLaunchAngle.HasValue)
+            {
+                if (e.Shot.VerticalLaunchAngleCalculationType.HasValue) Console.WriteLine("  Vertical Launch Angle: {0:0.00}    Calculation Type: {1}", e.Shot.VerticalLaunchAngle, e.Shot.VerticalLaunchAngleCalculationType);
+                else Console.WriteLine("  Vertical Launch Angle: {0:0.00}", e.Shot.VerticalLaunchAngle);
+            }
+            if (e.Shot.Apex.HasValue)
+            {
+                if (e.Shot.ApexCalculationType.HasValue) Console.WriteLine("  Apex: {0:0.00}    Calculation Type: {1}", e.Shot.Apex, e.Shot.ApexCalculationType);
+                else Console.WriteLine("  Apex: {0:0.00}", e.Shot.Apex);
+            }
+            if (e.Shot.CarryDistance.HasValue)
+            {
+                if (e.Shot.CarryDistanceCalculationType.HasValue) Console.WriteLine("  Carry Distance: {0:0.00}    Calculation Type: {1}", e.Shot.CarryDistance, e.Shot.CarryDistanceCalculationType);
+                else Console.WriteLine("  Carry Distance: {0:0.00}", e.Shot.CarryDistance);
+            }
+            if (e.Shot.Side.HasValue)
+            {
+                if (e.Shot.SideCalculationType.HasValue) Console.WriteLine("  Side: {0:0.00}    Calculation Type: {1}", e.Shot.Side, e.Shot.SideCalculationType);
+                else Console.WriteLine("  Side: {0:0.00}", e.Shot.Side);
+            }
+            if (e.Shot.SideTotal.HasValue)
+            {
+                if (e.Shot.SideTotalCalculationType.HasValue) Console.WriteLine("  Side Total: {0:0.00}    Calculation Type: {1}", e.Shot.SideTotal, e.Shot.SideTotalCalculationType);
+                else Console.WriteLine("  Side Total: {0:0.00}", e.Shot.SideTotal);
+            }
+            if (e.Shot.TotalDistance.HasValue)
+            {
+                if (e.Shot.TotalDistanceCalculationType.HasValue) Console.WriteLine("  Total Distance: {0:0.00}    Calculation Type: {1}", e.Shot.TotalDistance, e.Shot.TotalDistanceCalculationType);
+                else Console.WriteLine("  Total Distance: {0:0.00}", e.Shot.TotalDistance);
+            }
 
+            if (e.Type == ShotType.Normalized)
+            {
                 // Track shots received and release semaphore once desired number has been seen
                 // so program can exit
                 _shotsReceived++;
