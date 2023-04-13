@@ -7,6 +7,7 @@ The LM Connect SDK from Full Swing Golf allows third party applications to conne
 In order to connect you must first request an AccountId and AccountKey from Full Swing Golf.
 
 The following data is provided per shot:
+
 * Club Speed - mph 
 * Ball Speed - mph 
 * Smash Factor 
