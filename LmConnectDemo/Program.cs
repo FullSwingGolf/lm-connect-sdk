@@ -216,16 +216,23 @@ namespace LmConnectDemo
 
             Console.WriteLine("Point cloud available for shot: {0}", e.ShotId);
 
-            // Request point cloud
-            PointCloud pointCloud = await device.GetPointCloud(e.ShotId);
-
-            Console.Write("Point Cloud Points: ");
-            for (int i = 0; i < 4; i++)
+            try
             {
-                PointCloudPoint point = pointCloud.Points[i];
-                Console.Write("[offset: {0}, x: {1}, y: {2}, z: {3}] ", point.Offset, point.X, point.Y, point.Z);
+                // Request point cloud
+                PointCloud pointCloud = await device.GetPointCloud(e.ShotId);
+
+                Console.Write("Point Cloud Points: ");
+                for (int i = 0; i < 4; i++)
+                {
+                    PointCloudPoint point = pointCloud.Points[i];
+                    Console.Write("[offset: {0}, x: {1}, y: {2}, z: {3}] ", point.Offset, point.X, point.Y, point.Z);
+                }
+                Console.Write("\n");
             }
-            Console.Write("\n");
+            catch (NotAuthorizedException)
+            {
+                Console.WriteLine("Not authorized to pull point cloud");
+            }
         }
 
         private static void Device_ConfigurationChangedEvent(object sender, ConfigurationChangedEventArgs e)
@@ -239,20 +246,27 @@ namespace LmConnectDemo
 
             Console.WriteLine("Video available for shot: {0}", e.ShotId);
 
-            //Default location for shot video
-            string videoDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).ToString(), @"Full Swing Golf\Launch Monitor Connect SDK\Shot Videos");
-            if (!Directory.Exists(videoDirectory)) Directory.CreateDirectory(videoDirectory);
-
-            string shotName = e.ShotId + ".mp4";
-            string path = Path.Combine(videoDirectory, shotName);
-
-            //Request shot video
-            using (Stream shotVideoStream = await device.GetShotVideo(e.ShotId))
+            try
             {
-                using (Stream fileStream = File.Open(path, FileMode.Create))
+                //Default location for shot video
+                string videoDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).ToString(), @"Full Swing Golf\Launch Monitor Connect SDK\Shot Videos");
+                if (!Directory.Exists(videoDirectory)) Directory.CreateDirectory(videoDirectory);
+
+                string shotName = e.ShotId + ".mp4";
+                string path = Path.Combine(videoDirectory, shotName);
+
+                //Request shot video
+                using (Stream shotVideoStream = await device.GetShotVideo(e.ShotId))
                 {
-                    await shotVideoStream.CopyToAsync(fileStream);
+                    using (Stream fileStream = File.Open(path, FileMode.Create))
+                    {
+                        await shotVideoStream.CopyToAsync(fileStream);
+                    }
                 }
+            }
+            catch (NotAuthorizedException)
+            {
+                Console.WriteLine("Not authorized to pull shot video");
             }
         }
 

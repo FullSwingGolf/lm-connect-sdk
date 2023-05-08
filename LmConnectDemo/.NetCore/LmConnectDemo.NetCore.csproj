@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FullSwingGolf.LaunchMonitor" Version="1.7.0" />
+    <PackageReference Include="FullSwingGolf.LaunchMonitor" Version="1.7.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="7.0.0" />
   </ItemGroup>
