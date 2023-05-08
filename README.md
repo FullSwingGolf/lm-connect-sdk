@@ -34,9 +34,9 @@ Full documenation is available at the following link:
 
 ## Release Notes
 
-### 1.7.0
+### 1.7.2
 
-* Updated to 1.7.0 version of SDK
+* Updated to 1.7.2 version of SDK
 * Example code added for pulling shot videos
 * Example code added for pulling shot point clouds
 * Example code added for seeing if a value was measured or predicted
