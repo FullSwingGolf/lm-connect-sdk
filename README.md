@@ -34,6 +34,11 @@ Full documenation is available at the following link:
 
 ## Release Notes
 
+### 1.8.0-alpha1
+
+* Updated to 1.8.0-alpha1 version of SDK
+* Example code for setting play mode to support short-shot (chipping) mode
+* 
 ### 1.7.2
 
 * Updated to 1.7.2 version of SDK
