@@ -177,6 +177,7 @@ namespace LmConnectDemo
                                     DataPoint.FaceAngle, DataPoint.FaceToPath, DataPoint.AttackAngle, DataPoint.Apex, DataPoint.HorizontalLaunchAngle,
                                     DataPoint.SideCarry, DataPoint.SideTotal };
                                 await device.SetConfiguration(ConfigurationId.ScreenLayout, screenLayout);
+                                await device.SetConfiguration(ConfigurationId.PlayMode, PlayMode.Normal);
 
                                 // If we connected to the device, wait for a few shots
                                 await _complete.WaitAsync();
