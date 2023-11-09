@@ -34,6 +34,11 @@ Full documenation is available at the following link:
 
 ## Release Notes
 
+### 1.8.0-alpha4
+
+* Updated to 1.8.0-alpha4 version of SDK
+* Example code for setting power state of the LM
+
 ### 1.8.0-alpha1
 
 * Updated to 1.8.0-alpha1 version of SDK

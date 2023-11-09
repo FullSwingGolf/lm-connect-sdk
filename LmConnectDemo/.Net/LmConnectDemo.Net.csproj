@@ -88,8 +88,8 @@
     <Reference Include="AWSSDK.SecurityToken, Version=3.3.0.0, Culture=neutral, PublicKeyToken=885c28607f98e604, processorArchitecture=MSIL">
       <HintPath>..\..\packages\AWSSDK.SecurityToken.3.7.101.60\lib\net45\AWSSDK.SecurityToken.dll</HintPath>
     </Reference>
-    <Reference Include="FullSwingGolf.LaunchMonitor, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\FullSwingGolf.LaunchMonitor.1.8.0-alpha1\lib\net461\FullSwingGolf.LaunchMonitor.dll</HintPath>
+    <Reference Include="FullSwingGolf.LaunchMonitor, Version=1.8.0.4, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\FullSwingGolf.LaunchMonitor.1.8.0-alpha4\lib\net461\FullSwingGolf.LaunchMonitor.dll</HintPath>
     </Reference>
     <Reference Include="JWT, Version=10.0.0.0, Culture=neutral, PublicKeyToken=6f98bca0f40f2ecf, processorArchitecture=MSIL">
       <HintPath>..\..\packages\JWT.10.0.2\lib\net462\JWT.dll</HintPath>

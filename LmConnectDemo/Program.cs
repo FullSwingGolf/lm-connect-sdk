@@ -161,14 +161,17 @@ namespace LmConnectDemo
                                 Console.WriteLine("  Serial Number: {0}", device.DeviceInformation.SerialNumber);
                                 Console.WriteLine("  Model Number: {0}", device.DeviceInformation.ModelNumber);
 
-                                // Step 9: Set configuration if desired - optional
+                                // Step 9: Set the device to active state
+                                await device.SetPowerState(PowerState.Active);
+
+                                // Step 10: Set configuration if desired - optional
                                 // Set the device to auto-arm as opposed to SDK arming it
                                 await device.SetConfiguration(ConfigurationId.AutoArm, true);
 
-                                // Step 10: Set the club type to driver
+                                // Step 11: Set the club type to driver
                                 await device.SetConfiguration(ConfigurationId.Club, Club.Driver);
 
-                                // Step 11: Set session related configuration - optional
+                                // Step 12: Set session related configuration - optional
                                 await device.SetConfiguration(ConfigurationId.Location, Location.Screen);
                                 await device.SetConfiguration(ConfigurationId.Altitude, 1100);
                                 await device.SetConfiguration(ConfigurationId.Temperature, 70.0);
@@ -177,12 +180,16 @@ namespace LmConnectDemo
                                     DataPoint.FaceAngle, DataPoint.FaceToPath, DataPoint.AttackAngle, DataPoint.Apex, DataPoint.HorizontalLaunchAngle,
                                     DataPoint.SideCarry, DataPoint.SideTotal };
                                 await device.SetConfiguration(ConfigurationId.ScreenLayout, screenLayout);
-                                await device.SetConfiguration(ConfigurationId.PlayMode, PlayMode.Normal);
+                                await device.SetConfiguration(ConfigurationId.PlayMode, PlayMode.Normal);                              
+                                await device.SetConfiguration(ConfigurationId.DataPointsHidden, false);
 
                                 // If we connected to the device, wait for a few shots
                                 await _complete.WaitAsync();
 
-                                // Step 12: Disconnect the device
+                                // Step 13: Set the device back to sleep state - optional
+                                await device.SetPowerState(PowerState.Sleep);
+
+                                // Step 14: Disconnect the device
                                 await device.Disconnect();
                             }
                             catch (ConnectionException ex)
