@@ -15,6 +15,7 @@ namespace LmConnectDemo
     {
         static private int _shotsReceived = 0;
         static private int _totalShots = 100;
+        static private bool _autoReconnect = true;
         static private SemaphoreSlim _complete = new SemaphoreSlim(0);
         // Add Account ID and Account Key provided by FSG in code or in .NET Core
         // add them to your secrets.json file
@@ -278,9 +279,36 @@ namespace LmConnectDemo
             }
         }
 
-        private static void Device_StateChangedEvent(object sender, StateChangedEventArgs e)
+        private static async void Device_StateChangedEvent(object sender, StateChangedEventArgs e)
         {
+            IDevice device = (IDevice)sender;
+
             Console.WriteLine("State changed {0}", e.State.ToString());
+
+            if (e.State == State.Disconnected)
+            {
+                if (_autoReconnect)
+                {
+                    Console.WriteLine("Device {0} disconnected. Press enter when ready to reconnect", device.Id);
+                    Console.ReadLine();
+                    try
+                    {
+                        // Since reconnecting to the same device, events are already subscribed to
+                        await device.Connect();
+                    }
+                    catch (ConnectionException ex)
+                    {
+                        Console.WriteLine("Could not connect to Launch Monitor {0}, {1}", device.Id, ex.ToString());
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Device {0} disconnected. Exiting demo", device.Id);
+
+                    // Release semaphore to exit program
+                    _complete.Release();
+                }
+            }
         }
 
         static void Device_ShotEvent(object sender, ShotEventArgs e)

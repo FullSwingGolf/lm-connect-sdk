@@ -34,6 +34,11 @@ Full documenation is available at the following link:
 
 ## Release Notes
 
+### 1.8.0-alpha5
+
+* Updated to 1.8.0-alpha5 version of SDK
+* Example code for reconnecting to the LM on a disconnect event
+
 ### 1.8.0-alpha4
 
 * Updated to 1.8.0-alpha4 version of SDK
